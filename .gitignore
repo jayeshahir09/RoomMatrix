@@ -1,0 +1,37 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+#IDE Files
+.idea/
+.vscode/
+*.iml
+
+#Nexj.js & Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+
+#Spring Boot % Java
+backend/target
+backend/.mvn/wrapper/maven-wrapper.jar
+
+.env
+.env.*
+*.env
+
+#Log Files (NPM & Spring Boot crashes / output) ) If an npm command fails or the backend dumps logs, they should not be tracked:
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+#TypeScript & Vercel Build Caches Next.js and TypeScript often generate incremental build cache files:
+*.tsbuildinfo
+frontend/.vercel/
+
+# Eclipse / Spring Tool Suite (STS) metadata In case anyone opens the Java backend using Eclipse or STS:
+.classpath
+.project
+.settings/
