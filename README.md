@@ -195,7 +195,20 @@ ALLOWED_ORIGINS=http://localhost:3000
 JWT_SECRET=your_base64_encoded_256_bit_secret_key
 JWT_ACCESS_EXPIRATION=900000
 JWT_REFRESH_EXPIRATION=604800000
+
+# WhatsApp Provider Configuration (console for dev, meta for production)
+WHATSAPP_PROVIDER=console
+WHATSAPP_PHONE_NUMBER_ID=your_meta_phone_number_id
+WHATSAPP_ACCESS_TOKEN=your_meta_system_user_access_token
+WHATSAPP_TEMPLATE_NAME=roommatrix_otp_verification
 ```
+
+#### Meta WhatsApp Cloud API Setup (Production)
+1. In the [Meta for Developers Portal](https://developers.facebook.com/), create an app with the **WhatsApp Business** product.
+2. Under WhatsApp > API Setup, copy your **Phone Number ID**.
+3. Generate a permanent System User **Access Token** with `whatsapp_business_messaging` permissions.
+4. Create an authentication/utility template named `roommatrix_otp_verification` with a body variable `{{1}}` for the OTP.
+5. Set `WHATSAPP_PROVIDER=meta` in your production environment variables. In local development, leaving `WHATSAPP_PROVIDER=console` prints OTPs directly to your terminal.
 
 ### 2. Run Backend
 ```bash
@@ -225,6 +238,7 @@ Frontend runs on [http://localhost:3000](http://localhost:3000) and Backend runs
 The backend features test-driven development (TDD) coverage across all layers:
 - **`AuthControllerTest`** (8 tests): Complete MockMvc testing of HTTP status codes, validation constraints, and cookie handling.
 - **`AuthServiceTest`** (8 tests): Comprehensive unit testing of OTP generation, WhatsApp dispatch, user lifecycle, and race condition prevention.
+- **`MetaWhatsAppServiceTest`** (8 tests): Verification of Meta Graph API request construction, Bearer auth, phone number E.164 normalization, and error handling.
 - **`JwtServiceTest`** (10 tests): Verification of token generation, signature validation, type claims, and expiration.
 
 ---
