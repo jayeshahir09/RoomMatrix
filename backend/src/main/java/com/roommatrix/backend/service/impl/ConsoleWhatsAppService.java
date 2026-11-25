@@ -3,9 +3,11 @@ package com.roommatrix.backend.service.impl;
 import com.roommatrix.backend.service.WhatsAppService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(name = "whatsapp.provider", havingValue = "console", matchIfMissing = true)
 public class ConsoleWhatsAppService implements WhatsAppService {
 
     private static final Logger log = LoggerFactory.getLogger(ConsoleWhatsAppService.class);

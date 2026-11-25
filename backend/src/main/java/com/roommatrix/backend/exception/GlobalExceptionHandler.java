@@ -79,6 +79,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(WhatsAppDeliveryException.class)
+    public ResponseEntity<ErrorResponse> handleWhatsAppDelivery(WhatsAppDeliveryException ex) {
+        ErrorResponse error = ErrorResponse.of(
+                HttpStatus.BAD_GATEWAY.value(),
+                "WhatsApp Delivery Failed",
+                ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {
         ErrorResponse error = ErrorResponse.of(
