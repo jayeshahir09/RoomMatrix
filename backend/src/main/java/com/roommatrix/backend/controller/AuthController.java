@@ -8,6 +8,8 @@ import com.roommatrix.backend.dto.auth.ResendOtpRequest;
 import com.roommatrix.backend.dto.auth.VerifyOtpRequest;
 import com.roommatrix.backend.service.AuthService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
 
@@ -32,6 +36,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        log.info("REST request: POST /api/auth/login for mobile: {}", request.mobileNumber());
         AuthService.LoginResult result = authService.login(request);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, result.refreshCookie().toString())
@@ -44,6 +49,7 @@ public class AuthController {
      */
     @PostMapping("/register")
     public ResponseEntity<RegisterInitResponse> register(@Valid @RequestBody RegisterRequest request) {
+        log.info("REST request: POST /api/auth/register for mobile: {}, email: {}", request.mobileNumber(), request.email());
         RegisterInitResponse response = authService.registerInit(request);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
@@ -54,6 +60,7 @@ public class AuthController {
      */
     @PostMapping("/verify-otp")
     public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        log.info("REST request: POST /api/auth/verify-otp for mobile: {}", request.mobileNumber());
         AuthService.RegisterResult result = authService.verifyOtpAndCompleteRegistration(request);
 
         return ResponseEntity
@@ -67,6 +74,7 @@ public class AuthController {
      */
     @PostMapping("/resend-otp")
     public ResponseEntity<RegisterInitResponse> resendOtp(@Valid @RequestBody ResendOtpRequest request) {
+        log.info("REST request: POST /api/auth/resend-otp for mobile: {}", request.mobileNumber());
         RegisterInitResponse response = authService.resendOtp(request);
         return ResponseEntity.ok(response);
     }

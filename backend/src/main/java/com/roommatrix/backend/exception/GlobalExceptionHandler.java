@@ -1,5 +1,7 @@
 package com.roommatrix.backend.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -15,8 +17,11 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
+        log.warn("Registration conflict (email): {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.CONFLICT.value(),
                 "Conflict",
@@ -27,6 +32,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MobileAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleMobileAlreadyExists(MobileAlreadyExistsException ex) {
+        log.warn("Registration conflict (mobile): {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.CONFLICT.value(),
                 "Conflict",
@@ -37,6 +43,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidOtpException.class)
     public ResponseEntity<ErrorResponse> handleInvalidOtp(InvalidOtpException ex) {
+        log.warn("OTP verification error: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request",
@@ -47,6 +54,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OtpExpiredException.class)
     public ResponseEntity<ErrorResponse> handleOtpExpired(OtpExpiredException ex) {
+        log.warn("OTP verification error: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.GONE.value(),
                 "OTP Expired",
@@ -57,6 +65,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PendingRegistrationNotFoundException.class)
     public ResponseEntity<ErrorResponse> handlePendingRegistrationNotFound(PendingRegistrationNotFoundException ex) {
+        log.warn("OTP verification error: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.NOT_FOUND.value(),
                 "Not Found",
@@ -71,6 +80,7 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
+        log.warn("Request input validation failed: {}", errors);
 
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(),
@@ -83,6 +93,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WhatsAppDeliveryException.class)
     public ResponseEntity<ErrorResponse> handleWhatsAppDelivery(WhatsAppDeliveryException ex) {
+        log.error("WhatsApp delivery failure: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.BAD_GATEWAY.value(),
                 "WhatsApp Delivery Failed",
@@ -93,6 +104,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.UNAUTHORIZED.value(),
                 "Unauthorized",
@@ -103,6 +115,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ErrorResponse> handleDisabled(DisabledException ex) {
+        log.warn("Authentication blocked for disabled account: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 "Forbidden",
@@ -113,6 +126,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {
+        log.error("Unhandled internal server error: ", ex);
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
