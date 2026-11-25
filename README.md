@@ -235,7 +235,7 @@ Frontend runs on [http://localhost:3000](http://localhost:3000) and Backend runs
 
 ## 🧪 Testing Summary
 
-The backend features test-driven development (TDD) coverage across all layers:
+The backend features comprehensive automated test coverage across all layers:
 - **`AuthControllerTest`** (8 tests): Complete MockMvc testing of HTTP status codes, validation constraints, and cookie handling.
 - **`AuthServiceTest`** (8 tests): Comprehensive unit testing of OTP generation, WhatsApp dispatch, user lifecycle, and race condition prevention.
 - **`MetaWhatsAppServiceTest`** (8 tests): Verification of Meta Graph API request construction, Bearer auth, phone number E.164 normalization, and error handling.
