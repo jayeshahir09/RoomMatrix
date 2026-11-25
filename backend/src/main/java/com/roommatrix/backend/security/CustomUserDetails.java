@@ -30,7 +30,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.getEmail(); // Email is used as the username for login
+        return user.getMobileNumber(); // Mobile number is used as the principal identifier for authentication
     }
 
     @Override

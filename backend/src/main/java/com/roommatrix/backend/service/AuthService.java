@@ -5,6 +5,10 @@ import org.springframework.http.ResponseCookie;
 
 public interface AuthService {
     record RegisterResult(AuthResponse response, ResponseCookie refreshCookie) {}
+    record LoginResult(AuthResponse response, ResponseCookie refreshCookie) {}
+
+    // Login with mobile number and password
+    LoginResult login(LoginRequest request);
 
     // Step 1: Submit form ➔ saves to PendingRegistration ➔ sends WhatsApp OTP
     RegisterInitResponse registerInit(RegisterRequest request);

@@ -1,6 +1,7 @@
 package com.roommatrix.backend.controller;
 
 import com.roommatrix.backend.dto.auth.AuthResponse;
+import com.roommatrix.backend.dto.auth.LoginRequest;
 import com.roommatrix.backend.dto.auth.RegisterInitResponse;
 import com.roommatrix.backend.dto.auth.RegisterRequest;
 import com.roommatrix.backend.dto.auth.ResendOtpRequest;
@@ -23,6 +24,18 @@ public class AuthController {
 
     public AuthController(AuthService authService) {
         this.authService = authService;
+    }
+
+    /**
+     * Mobile number and password login.
+     * Validates credentials, returns JWT access token, and sets HttpOnly refresh token cookie.
+     */
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthService.LoginResult result = authService.login(request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, result.refreshCookie().toString())
+                .body(result.response());
     }
 
     /**

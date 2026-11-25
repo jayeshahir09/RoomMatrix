@@ -1,6 +1,7 @@
 package com.roommatrix.backend.service.impl;
 
 import com.roommatrix.backend.dto.auth.AuthResponse;
+import com.roommatrix.backend.dto.auth.LoginRequest;
 import com.roommatrix.backend.dto.auth.RegisterInitResponse;
 import com.roommatrix.backend.dto.auth.RegisterRequest;
 import com.roommatrix.backend.dto.auth.ResendOtpRequest;
@@ -21,6 +22,11 @@ import com.roommatrix.backend.service.AuthService;
 import com.roommatrix.backend.service.WhatsAppService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final WhatsAppService whatsAppService;
+    private final AuthenticationManager authenticationManager;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${jwt.refresh-token-expiration:604800000}")
@@ -51,12 +58,68 @@ public class AuthServiceImpl implements AuthService {
             PendingRegistrationRepository pendingRegistrationRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            WhatsAppService whatsAppService) {
+            WhatsAppService whatsAppService,
+            AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.pendingRegistrationRepository = pendingRegistrationRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.whatsAppService = whatsAppService;
+        this.authenticationManager = authenticationManager;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResult login(LoginRequest request) {
+        String cleanMobile = request.mobileNumber().trim();
+
+        // 1. Authenticate mobile number & password via AuthenticationManager
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(cleanMobile, request.password())
+            );
+        } catch (BadCredentialsException ex) {
+            throw new BadCredentialsException("Invalid mobile number or password");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        User user = userDetails.getUser();
+
+        // 2. Enforce active status
+        if (!user.isActive()) {
+            throw new DisabledException("Account has been deactivated. Please contact support.");
+        }
+
+        // 3. Generate JWT tokens
+        String accessToken = jwtService.generateAccessToken(userDetails);
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
+
+        // 4. Build HttpOnly Cookie for Refresh Token
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(false) // true in HTTPS production
+                .path("/")
+                .maxAge(refreshTokenExpiration / 1000)
+                .sameSite("Lax")
+                .build();
+
+        Set<String> roleNames = user.getRoles().stream()
+                .map(Enum::name)
+                .collect(Collectors.toSet());
+
+        AuthResponse authResponse = AuthResponse.of(
+                accessToken,
+                user.getFirstName(),
+                user.getLastName(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getMobileNumber(),
+                user.getGender(),
+                roleNames,
+                user.getRoleReferences());
+
+        return new LoginResult(authResponse, refreshCookie);
     }
 
     @Override
