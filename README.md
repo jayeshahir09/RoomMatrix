@@ -164,6 +164,35 @@ RoomMatrix completely eliminates this risk:
 }
 ```
 
+#### 4. Login (Mobile Number & Password)
+- **Endpoint**: `POST /api/auth/login`
+- **Request Body**:
+```json
+{
+  "mobileNumber": "9876543210",
+  "password": "StrongPassword123!"
+}
+```
+- **Response** (`200 OK`):
+  - **Headers**: `Set-Cookie: refreshToken=...; HttpOnly; Path=/; SameSite=Lax`
+  - **Body**:
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1Ni...",
+  "tokenType": "Bearer",
+  "firstName": "John",
+  "lastName": "Doe",
+  "fullName": "John A Doe",
+  "email": "john.doe@example.com",
+  "mobileNumber": "9876543210",
+  "gender": "MALE",
+  "roles": ["TENANT"],
+  "roleReferences": {
+    "TENANT": null
+  }
+}
+```
+
 ---
 
 ## 🛡️ Security & Clean Architecture
@@ -236,8 +265,8 @@ Frontend runs on [http://localhost:3000](http://localhost:3000) and Backend runs
 ## 🧪 Testing Summary
 
 The backend features comprehensive automated test coverage across all layers:
-- **`AuthControllerTest`** (8 tests): Complete MockMvc testing of HTTP status codes, validation constraints, and cookie handling.
-- **`AuthServiceTest`** (8 tests): Comprehensive unit testing of OTP generation, WhatsApp dispatch, user lifecycle, and race condition prevention.
+- **`AuthControllerTest`** (12 tests): Complete MockMvc testing of HTTP status codes, validation constraints, login, OTP verification, and cookie handling.
+- **`AuthServiceTest`** (11 tests): Comprehensive unit testing of OTP generation, WhatsApp dispatch, user lifecycle, mobile login, and race condition prevention.
 - **`MetaWhatsAppServiceTest`** (8 tests): Verification of Meta Graph API request construction, Bearer auth, phone number E.164 normalization, and error handling.
 - **`JwtServiceTest`** (10 tests): Verification of token generation, signature validation, type claims, and expiration.
 
