@@ -1,6 +1,7 @@
 package com.roommatrix.backend.service;
 
 import com.roommatrix.backend.dto.auth.AuthResponse;
+import com.roommatrix.backend.dto.auth.LoginRequest;
 import com.roommatrix.backend.dto.auth.RegisterInitResponse;
 import com.roommatrix.backend.dto.auth.RegisterRequest;
 import com.roommatrix.backend.dto.auth.ResendOtpRequest;
@@ -15,6 +16,7 @@ import com.roommatrix.backend.exception.MobileAlreadyExistsException;
 import com.roommatrix.backend.exception.OtpExpiredException;
 import com.roommatrix.backend.repository.PendingRegistrationRepository;
 import com.roommatrix.backend.repository.UserRepository;
+import com.roommatrix.backend.security.CustomUserDetails;
 import com.roommatrix.backend.security.JwtService;
 import com.roommatrix.backend.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +26,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -57,6 +64,9 @@ class AuthServiceTest {
 
         @Mock
         private WhatsAppService whatsAppService;
+
+        @Mock
+        private AuthenticationManager authenticationManager;
 
         @InjectMocks
         private AuthServiceImpl authService;
@@ -310,5 +320,86 @@ class AuthServiceTest {
 
                 verify(pendingRegistrationRepository).save(pending);
                 verify(whatsAppService).sendOtp(eq("9876543210"), anyString());
+        }
+
+        // ─── LOGIN TESTS ──────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("Should login successfully with valid mobile number and password")
+        void shouldLoginSuccessfully_WhenCredentialsValid() {
+                // Arrange
+                LoginRequest request = new LoginRequest("9876543210", "password123");
+
+                User user = User.builder()
+                                .id(1L)
+                                .firstName("John")
+                                .lastName("Doe")
+                                .email("john@example.com")
+                                .mobileNumber("9876543210")
+                                .password("$2a$10$hashed")
+                                .gender(Gender.MALE)
+                                .isActive(true)
+                                .build();
+
+                CustomUserDetails userDetails = new CustomUserDetails(user);
+                Authentication auth = mock(Authentication.class);
+                when(auth.getPrincipal()).thenReturn(userDetails);
+
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(auth);
+                when(jwtService.generateAccessToken(userDetails)).thenReturn("dummy.access.token");
+                when(jwtService.generateRefreshToken(userDetails)).thenReturn("dummy.refresh.token");
+
+                // Act
+                AuthService.LoginResult result = authService.login(request);
+
+                // Assert
+                assertThat(result).isNotNull();
+                assertThat(result.response().accessToken()).isEqualTo("dummy.access.token");
+                assertThat(result.response().mobileNumber()).isEqualTo("9876543210");
+                assertThat(result.response().email()).isEqualTo("john@example.com");
+                assertThat(result.refreshCookie().getValue()).isEqualTo("dummy.refresh.token");
+        }
+
+        @Test
+        @DisplayName("Should throw BadCredentialsException when mobile number or password is wrong")
+        void shouldThrowBadCredentials_WhenAuthenticationFails() {
+                // Arrange
+                LoginRequest request = new LoginRequest("9876543210", "wrongpassword");
+
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+                // Act & Assert
+                assertThatThrownBy(() -> authService.login(request))
+                                .isInstanceOf(BadCredentialsException.class)
+                                .hasMessageContaining("Invalid mobile number or password");
+        }
+
+        @Test
+        @DisplayName("Should throw DisabledException when user account is deactivated")
+        void shouldThrowDisabledException_WhenUserInactive() {
+                // Arrange
+                LoginRequest request = new LoginRequest("9876543210", "password123");
+
+                User deactivatedUser = User.builder()
+                                .id(1L)
+                                .firstName("John")
+                                .lastName("Doe")
+                                .email("john@example.com")
+                                .mobileNumber("9876543210")
+                                .password("$2a$10$hashed")
+                                .isActive(false) // Inactive!
+                                .build();
+
+                CustomUserDetails userDetails = new CustomUserDetails(deactivatedUser);
+                Authentication auth = mock(Authentication.class);
+                when(auth.getPrincipal()).thenReturn(userDetails);
+
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(auth);
+
+                // Act & Assert
+                assertThatThrownBy(() -> authService.login(request))
+                                .isInstanceOf(DisabledException.class)
+                                .hasMessageContaining("Account has been deactivated");
         }
 }

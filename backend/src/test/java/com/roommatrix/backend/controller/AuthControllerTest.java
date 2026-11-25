@@ -2,6 +2,7 @@ package com.roommatrix.backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.roommatrix.backend.dto.auth.AuthResponse;
+import com.roommatrix.backend.dto.auth.LoginRequest;
 import com.roommatrix.backend.dto.auth.RegisterInitResponse;
 import com.roommatrix.backend.dto.auth.RegisterRequest;
 import com.roommatrix.backend.dto.auth.ResendOtpRequest;
@@ -24,6 +25,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -246,5 +249,90 @@ class AuthControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("No pending registration found")));
+    }
+
+    // ─── POST /api/auth/login ─────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /api/auth/login - Should return 200 OK with HttpOnly refresh cookie and AuthResponse")
+    void login_ValidCredentials_Returns200WithCookie() throws Exception {
+        LoginRequest request = new LoginRequest("9876543210", "secret123");
+
+        AuthResponse authResponse = AuthResponse.of(
+                "access.jwt.token",
+                "John",
+                "Doe",
+                "John Doe",
+                "john@example.com",
+                "9876543210",
+                Gender.MALE,
+                Set.of("TENANT"),
+                Map.of(Role.TENANT, 1L)
+        );
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "refresh.jwt.token")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(604800)
+                .build();
+
+        AuthService.LoginResult result = new AuthService.LoginResult(authResponse, cookie);
+
+        when(authService.login(any(LoginRequest.class))).thenReturn(result);
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(header().exists(HttpHeaders.SET_COOKIE))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("refreshToken=refresh.jwt.token")))
+                .andExpect(jsonPath("$.accessToken").value("access.jwt.token"))
+                .andExpect(jsonPath("$.mobileNumber").value("9876543210"))
+                .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login - Should return 400 Bad Request on invalid mobile number format")
+    void login_InvalidMobileFormat_Returns400() throws Exception {
+        LoginRequest request = new LoginRequest("12345", "secret123");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.mobileNumber").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login - Should return 401 Unauthorized on invalid credentials")
+    void login_BadCredentials_Returns401() throws Exception {
+        LoginRequest request = new LoginRequest("9876543210", "wrongpassword");
+
+        when(authService.login(any(LoginRequest.class)))
+                .thenThrow(new BadCredentialsException("Invalid mobile number or password"));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.message").value("Invalid mobile number or password"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login - Should return 403 Forbidden when account is deactivated")
+    void login_DeactivatedAccount_Returns403() throws Exception {
+        LoginRequest request = new LoginRequest("9876543210", "secret123");
+
+        when(authService.login(any(LoginRequest.class)))
+                .thenThrow(new DisabledException("Account has been deactivated. Please contact support."));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.message").value("Account has been deactivated. Please contact support."));
     }
 }
